@@ -42,7 +42,7 @@ const fieldMappings = {
 exports.fieldMappings = fieldMappings;
 
 const formatPhone = (phone) => {
-    return phone ? `(${phone.substr(0,3)}) ${phone.substr(3,3)}-${phone.substr(6)}` : '';
+    return phone && (new RegExp("^[\\d]+$").test(phone)) ? `(${phone.substr(0,3)}) ${phone.substr(3,3)}-${phone.substr(6)}` : '';
 };
 
 const fromVCardToObject = (vCard) => {
@@ -59,47 +59,38 @@ const fromVCardToObject = (vCard) => {
     return newProfileInfo;
 }
 
-function downloadPage(url) {
-    return new Promise((resolve, reject) => {
-        request(url, (error, response, body) => {
-            if (error) reject(error);
-            if (response.statusCode != 200) {
-                reject('Invalid status code <' + response.statusCode + '>');
-            }
-            resolve(body);
-        });
-    });
-}
-
-exports.getProfileInfo = (profileUrl) => {
+exports.getProfileInfoSync = (profileUrl) => {
     return new Promise((resolve, reject) => {
         // console.log(`Retrieving profile information for :  ${profileUrl}`);
+        this.getProfileInfoAsync(profileUrl, resolve);
+    });
+};
 
-        request(profileUrl, (error, response, html) => {
-            if (response && response.statusCode === 200) {
-                const vCardUrl = `https://www.marcusmillichap.com/${html.match(/\/downloadmmvcard\/\d+/g)}`;
-                // console.log('Url: ' + vCardUrl);
-                request(vCardUrl, (vCardError, vCardResponse, vCard) => {
-                    if (vCardResponse && vCardResponse.statusCode === 200) {
-                        const root = parse(html);
+exports.getProfileInfoAsync = (profileUrl, callback) => {
+    request(profileUrl, (error, response, html) => {
+        if (response && response.statusCode === 200) {
+            const vCardUrl = `https://www.marcusmillichap.com/${html.match(/\/downloadmmvcard\/\d+/g)}`;
+            // console.log('Url: ' + vCardUrl);
+            request(vCardUrl, (vCardError, vCardResponse, vCard) => {
+                if (vCardResponse && vCardResponse.statusCode === 200) {
+                    const root = parse(html);
 
-                        const newProfileInfo = fromVCardToObject(vCard);
-                        newProfileInfo.officePage = profileUrl;
-                        newProfileInfo.service = root.querySelector('.mm-agent-hero h3')?.textContent;
+                    const newProfileInfo = fromVCardToObject(vCard);
+                    newProfileInfo.officePage = profileUrl;
+                    newProfileInfo.service = root.querySelector('.mm-agent-hero h3')?.textContent;
 
-                        const csvData = Object.keys(newProfileInfo).map(key => newProfileInfo[key]).join(',');
+                    const csvData = Object.keys(newProfileInfo).map(key => newProfileInfo[key]).join(',');
 
-                        fs.appendFileSync('all-profiles.csv', "\r\n" + csvData);
-                        resolve(null);
-                    } else if (vCardError) {
-                        console.log('VCardError' + vCardError);
-                        resolve(null);
-                    }
-                });
-            } else if (error) {
-                console.log('Err ' + error + ' ' + profileUrl);
-                resolve(null);
-            }
-        });
+                    fs.appendFileSync('all-profiles.csv', "\r\n" + csvData);
+                    callback && callback(null);
+                } else if (vCardError) {
+                    console.log('VCardError' + vCardError);
+                    callback && callback(null);
+                }
+            });
+        } else if (error) {
+            console.log('Err ' + error + ' ' + profileUrl);
+            callback && callback(null);
+        }
     });
 };
