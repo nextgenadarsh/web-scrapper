@@ -1,0 +1,16 @@
+{
+  "name": "web-scrapper",
+  "version": "1.0.0",
+  "description": "Website Scrapper",
+  "main": "index.js",
+  "dependencies": {
+    "node-html-parser": "^3.3.5",
+    "request": "^2.88.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Adarsh Kumar",
+  "license": "ISC"
+}
