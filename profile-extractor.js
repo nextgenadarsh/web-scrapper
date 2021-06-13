@@ -59,31 +59,47 @@ const fromVCardToObject = (vCard) => {
     return newProfileInfo;
 }
 
-exports.getProfileInfo = (profileUrl, callback) => {
-    // console.log(`Retrieving profile information for :  ${profileUrl}`);
+function downloadPage(url) {
+    return new Promise((resolve, reject) => {
+        request(url, (error, response, body) => {
+            if (error) reject(error);
+            if (response.statusCode != 200) {
+                reject('Invalid status code <' + response.statusCode + '>');
+            }
+            resolve(body);
+        });
+    });
+}
 
-    return request(profileUrl,  (error, response, html) => {
-        if(response && response.statusCode === 200) {
-            const vCardUrl = `https://www.marcusmillichap.com/${html.match(/\/downloadmmvcard\/\d+/g)}`;
-            // console.log('Url: ' + vCardUrl);
-            request(vCardUrl, (vCardError, vCardResponse, vCard) => {
-                if(vCardResponse && vCardResponse.statusCode === 200) {
-                    const root = parse(html);
+exports.getProfileInfo = (profileUrl) => {
+    return new Promise((resolve, reject) => {
+        // console.log(`Retrieving profile information for :  ${profileUrl}`);
 
-                    const newProfileInfo = fromVCardToObject(vCard);
-                    newProfileInfo.officePage = profileUrl;
-                    newProfileInfo.service = root.querySelector('.mm-agent-hero h3')?.textContent;
+        request(profileUrl, (error, response, html) => {
+            if (response && response.statusCode === 200) {
+                const vCardUrl = `https://www.marcusmillichap.com/${html.match(/\/downloadmmvcard\/\d+/g)}`;
+                // console.log('Url: ' + vCardUrl);
+                request(vCardUrl, (vCardError, vCardResponse, vCard) => {
+                    if (vCardResponse && vCardResponse.statusCode === 200) {
+                        const root = parse(html);
 
-                    const csvData = Object.keys(newProfileInfo).map(key => newProfileInfo[key]).join(',');
+                        const newProfileInfo = fromVCardToObject(vCard);
+                        newProfileInfo.officePage = profileUrl;
+                        newProfileInfo.service = root.querySelector('.mm-agent-hero h3')?.textContent;
 
-                    fs.appendFileSync('all-profiles.csv', "\r\n" + csvData);
-                } else if(vCardError) {
-                    console.log('VCardError' + vCardError);
-                }
-            });
-        } else if(error) {
-            console.log('Err ' + error + ' ' + profileUrl);
-        }
-        return "Hello";
+                        const csvData = Object.keys(newProfileInfo).map(key => newProfileInfo[key]).join(',');
+
+                        fs.appendFileSync('all-profiles.csv', "\r\n" + csvData);
+                        resolve(null);
+                    } else if (vCardError) {
+                        console.log('VCardError' + vCardError);
+                        resolve(null);
+                    }
+                });
+            } else if (error) {
+                console.log('Err ' + error + ' ' + profileUrl);
+                resolve(null);
+            }
+        });
     });
 };
