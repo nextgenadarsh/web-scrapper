@@ -60,12 +60,12 @@ const fromVCardToObject = (vCard) => {
 }
 
 exports.getProfileInfo = (profileUrl, callback) => {
-    console.log(`Retrieving profile information for :  ${profileUrl}`);
+    // console.log(`Retrieving profile information for :  ${profileUrl}`);
 
     return request(profileUrl,  (error, response, html) => {
         if(response && response.statusCode === 200) {
             const vCardUrl = `https://www.marcusmillichap.com/${html.match(/\/downloadmmvcard\/\d+/g)}`;
-            console.log('Url: ' + vCardUrl);
+            // console.log('Url: ' + vCardUrl);
             request(vCardUrl, (vCardError, vCardResponse, vCard) => {
                 if(vCardResponse && vCardResponse.statusCode === 200) {
                     const root = parse(html);
@@ -77,8 +77,12 @@ exports.getProfileInfo = (profileUrl, callback) => {
                     const csvData = Object.keys(newProfileInfo).map(key => newProfileInfo[key]).join(',');
 
                     fs.appendFileSync('all-profiles.csv', "\r\n" + csvData);
+                } else if(vCardError) {
+                    console.log('VCardError' + vCardError);
                 }
             });
+        } else if(error) {
+            console.log('Err ' + error + ' ' + profileUrl);
         }
         return "Hello";
     });
